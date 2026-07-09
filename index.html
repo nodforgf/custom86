@@ -1330,14 +1330,21 @@
                         bgMusic.muted = false;
                         bgMusic.volume = 0.5;
                         bgMusic.currentTime = 237;
-                        bgMusic.play().catch(err => {
-                            console.log("Music play failed:", err);
-                            // ลองอีกครั้งด้วย user interaction ที่ยังค้างอยู่
-                            document.addEventListener('touchend', function retryPlay() {
-                                bgMusic.play().catch(() => {});
-                                document.removeEventListener('touchend', retryPlay);
-                            }, { once: true });
-                        });
+                        const playPromise = bgMusic.play();
+                        if (playPromise !== undefined) {
+                            playPromise.then(() => {
+                                // ตั้ง currentTime หลัง play จริงๆ — แก้ปัญหา Safari/mobile รีเซ็ตกลับ 0
+                                bgMusic.currentTime = 237;
+                            }).catch(err => {
+                                console.log("Music play failed:", err);
+                                // ลองอีกครั้งด้วย user interaction ที่ยังค้างอยู่
+                                document.addEventListener('touchend', function retryPlay() {
+                                    bgMusic.currentTime = 237;
+                                    bgMusic.play().catch(() => {});
+                                    document.removeEventListener('touchend', retryPlay);
+                                }, { once: true });
+                            });
+                        }
                     }
                     
                     setTimeout(() => {
