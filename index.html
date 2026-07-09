@@ -705,7 +705,7 @@
             <button class="frev-btn" id="frev-close">รับไว้เลย 💕</button>
         </div>
     </div>
-    <audio id="backgroundMusic" loop preload="auto">
+    <audio id="backgroundMusic" loop>
         <source src="mp3.mp3" type="audio/mpeg">
     </audio>
     <div class="music-control" id="musicControlWrapper" style="display:none">
@@ -1323,36 +1323,12 @@
                     
                     // เล่นเพลง — audio ถูก unlock ไว้แล้วตอน touchstart/mousedown
                     const bgMusic = document.getElementById('backgroundMusic');
-                    if (bgMusic) {
+                    if (bgMusic && bgMusic.paused) {
                         bgMusic.muted = false;
                         bgMusic.volume = 0.5;
-
-                        // วิธีที่แน่นอนสุดสำหรับ mobile
-                        const startAudioAtTime = () => {
-                            try {
-                                bgMusic.currentTime = TARGET_TIME;
-                            } catch(e) {
-                                console.log('Seek failed:', e);
-                            }
-                            bgMusic.play().then(() => {
-                                // double-check หลัง play 100ms
-                                setTimeout(() => {
-                                    if (Math.abs(bgMusic.currentTime - TARGET_TIME) > 2) {
-                                        bgMusic.currentTime = TARGET_TIME;
-                                    }
-                                }, 100);
-                            }).catch(err => {
-                                console.log("Music play failed:", err);
-                            });
-                        };
-
-                        if (bgMusic.readyState >= 2) {
-                            // มี metadata แล้ว seek ได้เลย
-                            startAudioAtTime();
-                        } else {
-                            // รอให้โหลด metadata ก่อน
-                            bgMusic.addEventListener('loadedmetadata', startAudioAtTime, { once: true });
-                        }
+                        bgMusic.play().catch(err => {
+                            console.log("Music play failed:", err);
+                        });
                     }
                     
                     setTimeout(() => {
