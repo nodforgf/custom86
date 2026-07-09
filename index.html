@@ -1327,24 +1327,32 @@
                         bgMusic.muted = false;
                         bgMusic.volume = 0.5;
 
-                        // วิธีที่ work บน iOS/Android: seek ใน timeupdate ครั้งแรก
-                        let seekDone = false;
-                        function doSeek() {
-                            if (!seekDone) {
-                                seekDone = true;
+                        // วิธีที่แน่นอนสุดสำหรับ mobile
+                        const startAudioAtTime = () => {
+                            try {
                                 bgMusic.currentTime = TARGET_TIME;
-                                bgMusic.removeEventListener('timeupdate', doSeek);
+                            } catch(e) {
+                                console.log('Seek failed:', e);
                             }
-                        }
-                        bgMusic.addEventListener('timeupdate', doSeek);
+                            bgMusic.play().then(() => {
+                                // double-check หลัง play 100ms
+                                setTimeout(() => {
+                                    if (Math.abs(bgMusic.currentTime - TARGET_TIME) > 2) {
+                                        bgMusic.currentTime = TARGET_TIME;
+                                    }
+                                }, 100);
+                            }).catch(err => {
+                                console.log("Music play failed:", err);
+                            });
+                        };
 
-                        bgMusic.play().catch(err => {
-                            console.log("Music play failed:", err);
-                            document.addEventListener('touchend', function retryPlay() {
-                                bgMusic.play().catch(() => {});
-                                document.removeEventListener('touchend', retryPlay);
-                            }, { once: true });
-                        });
+                        if (bgMusic.readyState >= 2) {
+                            // มี metadata แล้ว seek ได้เลย
+                            startAudioAtTime();
+                        } else {
+                            // รอให้โหลด metadata ก่อน
+                            bgMusic.addEventListener('loadedmetadata', startAudioAtTime, { once: true });
+                        }
                     }
                     
                     setTimeout(() => {
