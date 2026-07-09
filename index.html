@@ -1272,21 +1272,18 @@
 
         // unlock audio สำหรับ iOS/Android — ต้องทำตรงใน user gesture event
         let audioUnlocked = false;
+        const TARGET_TIME = 237;
         function unlockAudio() {
             if (audioUnlocked) return;
             const bgMusic = document.getElementById('backgroundMusic');
             if (!bgMusic) return;
-            // mute แล้ว play เลย — ไม่ pause เพราะ Samsung/Chrome จะถือว่า context ถูก unlock แล้ว
             bgMusic.muted = true;
             bgMusic.volume = 0;
             bgMusic.play().then(() => {
-                // หยุดไว้ก่อน รอให้ hold ครบแล้วค่อย resume จริง
                 bgMusic.pause();
-                bgMusic.currentTime = 237;
                 bgMusic.muted = false;
                 audioUnlocked = true;
             }).catch(() => {
-                // ถ้า unlock ไม่สำเร็จ ให้ลองใหม่ตอน play จริง
                 audioUnlocked = false;
             });
         }
@@ -1329,22 +1326,25 @@
                     if (bgMusic) {
                         bgMusic.muted = false;
                         bgMusic.volume = 0.5;
-                        bgMusic.currentTime = 237;
-                        const playPromise = bgMusic.play();
-                        if (playPromise !== undefined) {
-                            playPromise.then(() => {
-                                // ตั้ง currentTime หลัง play จริงๆ — แก้ปัญหา Safari/mobile รีเซ็ตกลับ 0
-                                bgMusic.currentTime = 237;
-                            }).catch(err => {
-                                console.log("Music play failed:", err);
-                                // ลองอีกครั้งด้วย user interaction ที่ยังค้างอยู่
-                                document.addEventListener('touchend', function retryPlay() {
-                                    bgMusic.currentTime = 237;
-                                    bgMusic.play().catch(() => {});
-                                    document.removeEventListener('touchend', retryPlay);
-                                }, { once: true });
-                            });
+
+                        // วิธีที่ work บน iOS/Android: seek ใน timeupdate ครั้งแรก
+                        let seekDone = false;
+                        function doSeek() {
+                            if (!seekDone) {
+                                seekDone = true;
+                                bgMusic.currentTime = TARGET_TIME;
+                                bgMusic.removeEventListener('timeupdate', doSeek);
+                            }
                         }
+                        bgMusic.addEventListener('timeupdate', doSeek);
+
+                        bgMusic.play().catch(err => {
+                            console.log("Music play failed:", err);
+                            document.addEventListener('touchend', function retryPlay() {
+                                bgMusic.play().catch(() => {});
+                                document.removeEventListener('touchend', retryPlay);
+                            }, { once: true });
+                        });
                     }
                     
                     setTimeout(() => {
